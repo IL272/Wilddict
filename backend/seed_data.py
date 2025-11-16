@@ -48,6 +48,46 @@ sample_words = [
         "language": "Swedish",
         "source_language": "English",
         "tags": "adjective,philosophy"
+    },
+    {
+        "word": "Hygge",
+        "definition": "A quality of coziness and comfortable conviviality that engenders a feeling of contentment",
+        "example": "Lighting candles and reading a good book creates hygge on cold winter evenings.",
+        "language": "Danish",
+        "source_language": "English",
+        "tags": "noun,lifestyle"
+    },
+    {
+        "word": "Wanderlust",
+        "definition": "A strong desire to travel and explore the world",
+        "example": "After months in the office, her wanderlust was stronger than ever.",
+        "language": "German",
+        "source_language": "English",
+        "tags": "noun,travel"
+    },
+    {
+        "word": "Tsundoku",
+        "definition": "The act of acquiring books and letting them pile up unread",
+        "example": "My tsundoku habit means I have a tower of books by my bedside.",
+        "language": "Japanese",
+        "source_language": "English",
+        "tags": "noun,books"
+    },
+    {
+        "word": "Meraki",
+        "definition": "To do something with soul, creativity, or love; putting yourself into your work",
+        "example": "She painted the mural with meraki, pouring her heart into every brushstroke.",
+        "language": "Greek",
+        "source_language": "English",
+        "tags": "noun,creativity"
+    },
+    {
+        "word": "Ubuntu",
+        "definition": "The belief in a universal bond of sharing that connects all humanity",
+        "example": "The community's spirit of ubuntu helped everyone through difficult times.",
+        "language": "Zulu",
+        "source_language": "English",
+        "tags": "noun,philosophy"
     }
 ]
 
@@ -57,19 +97,23 @@ def seed_database():
     db = SessionLocal()
     
     try:
-        # Check if data already exists
-        existing = db.query(WordDB).first()
-        if existing:
-            print("Database already has data. Skipping seed.")
-            return
+        # Check existing words count
+        existing_count = db.query(WordDB).count()
+        print(f"Current words in database: {existing_count}")
         
-        # Add sample words
+        # Add new words (skip duplicates)
+        added = 0
         for word_data in sample_words:
-            db_word = WordDB(**word_data)
-            db.add(db_word)
+            # Check if word already exists
+            existing = db.query(WordDB).filter(WordDB.word == word_data['word']).first()
+            if not existing:
+                db_word = WordDB(**word_data)
+                db.add(db_word)
+                added += 1
         
         db.commit()
-        print(f"Successfully added {len(sample_words)} words to database!")
+        print(f"Successfully added {added} new words to database!")
+        print(f"Total words in database: {existing_count + added}")
         
     except Exception as e:
         print(f"Error seeding database: {e}")
