@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Download, BookOpen, User, Settings, LogOut, Plus, Filter, BarChart3, List, Folder } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
+import { api, type Word as ApiWord, type Stats as ApiStats } from '../lib/api';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,80 +26,60 @@ interface DashboardProps {
   onNavigateToLanding: () => void;
 }
 
-interface Word {
-  id: string;
-  word: string;
-  definition: string;
-  example: string;
-  language: string;
-  sourceLanguage: string;
-  date: string;
-  tags?: string[];
-}
-
 export default function Dashboard({ onNavigateToLanding }: DashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState('all');
+  const [words, setWords] = useState<ApiWord[]>([]);
+  const [stats, setStats] = useState<ApiStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data
-  const words: Word[] = [
+  // Load data from API
+  useEffect(() => {
+    loadData();
+  }, [selectedLanguage]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const [wordsData, statsData] = await Promise.all([
+        api.getWords({ language: selectedLanguage === 'all' ? undefined : selectedLanguage }),
+        api.getStats()
+      ]);
+      
+      setWords(wordsData);
+      setStats(statsData);
+    } catch (err) {
+      console.error('Failed to load data:', err);
+      setError('Failed to load data from server');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mock fallback data (kept for backwards compatibility)
+  const mockWords: ApiWord[] = [
     {
-      id: '1',
+      id: 1,
       word: 'Serendipity',
       definition: 'The occurrence of events by chance in a happy or beneficial way',
       example: 'Finding that book in the old bookstore was pure serendipity.',
       language: 'English',
-      sourceLanguage: 'Spanish',
-      date: '2025-11-14',
+      source_language: 'Spanish',
+      created_at: '2025-11-14',
       tags: ['noun', 'abstract'],
-    },
-    {
-      id: '2',
-      word: 'Gemütlichkeit',
-      definition: 'A state of warmth, friendliness, and good cheer',
-      example: 'The café had an atmosphere of gemütlichkeit that made everyone feel welcome.',
-      language: 'German',
-      sourceLanguage: 'English',
-      date: '2025-11-13',
-      tags: ['noun', 'feeling'],
-    },
-    {
-      id: '3',
-      word: 'Komorebi',
-      definition: 'Sunlight filtering through trees',
-      example: 'The komorebi created beautiful patterns on the forest floor.',
-      language: 'Japanese',
-      sourceLanguage: 'English',
-      date: '2025-11-12',
-      tags: ['noun', 'nature'],
-    },
-    {
-      id: '4',
-      word: 'Saudade',
-      definition: 'A deep emotional state of nostalgic longing for something or someone',
-      example: 'She felt saudade for her hometown every autumn.',
-      language: 'Portuguese',
-      sourceLanguage: 'English',
-      date: '2025-11-11',
-      tags: ['noun', 'emotion'],
-    },
-    {
-      id: '5',
-      word: 'Lagom',
-      definition: 'Not too much, not too little; just right',
-      example: 'Swedish culture embraces the concept of lagom in daily life.',
-      language: 'Swedish',
-      sourceLanguage: 'English',
-      date: '2025-11-10',
-      tags: ['adjective', 'philosophy'],
     },
   ];
 
-  const stats = [
-    { label: 'Total Words', value: '127', change: '+12 this week' },
-    { label: 'Languages', value: '8', change: '3 active' },
+  const displayWords = words.length > 0 ? words : mockWords;
+
+  const statsDisplay = [
+    { label: 'Total Words', value: stats?.total_words.toString() || '0', change: '+12 this week' },
+    { label: 'Languages', value: stats?.language_count.toString() || '0', change: stats?.languages.slice(0, 3).join(', ') || 'Loading...' },
     { label: 'Study Streak', value: '15 days', change: 'Personal best!' },
-    { label: 'Words Mastered', value: '43', change: '34% of total' },
+    { label: 'Words Mastered', value: Math.floor((stats?.total_words || 0) * 0.34).toString(), change: '34% of total' },
   ];
 
   const wordLists = [
@@ -107,11 +88,10 @@ export default function Dashboard({ onNavigateToLanding }: DashboardProps) {
     { name: 'Everyday Phrases', count: 28, color: 'bg-purple-500' },
   ];
 
-  const filteredWords = words.filter((word) => {
+  const filteredWords = displayWords.filter((word) => {
     const matchesSearch = word.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
       word.definition.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesLanguage = selectedLanguage === 'all' || word.language === selectedLanguage;
-    return matchesSearch && matchesLanguage;
+    return matchesSearch;
   });
 
   const handleExport = () => {
@@ -256,7 +236,7 @@ export default function Dashboard({ onNavigateToLanding }: DashboardProps) {
                                 {word.language}
                               </Badge>
                               <span className="text-sm text-gray-500">
-                                from {word.sourceLanguage}
+                                from {word.source_language}
                               </span>
                               {word.tags?.map((tag) => (
                                 <Badge key={tag} variant="secondary" className="text-xs">
@@ -266,7 +246,7 @@ export default function Dashboard({ onNavigateToLanding }: DashboardProps) {
                             </div>
                           </div>
                           <span className="text-sm text-gray-500 whitespace-nowrap">
-                            {new Date(word.date).toLocaleDateString('en-US', {
+                            {new Date(word.created_at).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
                             })}
@@ -323,7 +303,7 @@ export default function Dashboard({ onNavigateToLanding }: DashboardProps) {
           {/* Stats Tab */}
           <TabsContent value="stats" className="space-y-6">
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {stats.map((stat, index) => (
+              {statsDisplay.map((stat, index) => (
                 <Card key={index}>
                   <CardHeader>
                     <CardTitle className="text-sm text-gray-600">{stat.label}</CardTitle>
