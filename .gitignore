@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/wilddict.db
+backend/.env
+*.egg-info/
+venv/
+env/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
