@@ -6,11 +6,19 @@ from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Optional
+from dotenv import load_dotenv
 import uvicorn
+import os
+
+# Load environment variables
+load_dotenv()
 
 # Database setup
-SQLALCHEMY_DATABASE_URL = "sqlite:///./wilddict.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./wilddict.db")
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

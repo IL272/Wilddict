@@ -1,6 +1,32 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: wilddict-postgres
+    environment:
+      POSTGRES_USER: wilddict
+      POSTGRES_PASSWORD: wilddict123
+      POSTGRES_DB: wilddict
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: wilddict-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://wilddict:wilddict123@postgres:5432/wilddict
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
   wilddict:
     build:
       context: .
@@ -11,3 +37,6 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
+
+volumes:
+  postgres_data:
