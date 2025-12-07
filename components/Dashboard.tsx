@@ -5,6 +5,7 @@ import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { api, type Word as ApiWord, type Stats as ApiStats } from '../lib/api';
+import { useAuth } from '../lib/AuthContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +28,7 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ onNavigateToLanding }: DashboardProps) {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState('all');
   const [words, setWords] = useState<ApiWord[]>([]);
@@ -51,6 +53,22 @@ export default function Dashboard({ onNavigateToLanding }: DashboardProps) {
       
       setWords(wordsData);
       setStats(statsData);
+      
+      // Если у пользователя нет слов, предлагаем загрузить демо-данные
+      if (wordsData.length === 0 && statsData.total_words === 0) {
+        try {
+          console.log('No words found, loading demo data...');
+          const result = await api.seedDemoData();
+          console.log('Demo data loaded:', result);
+          // Перезагружаем данные
+          const newWordsData = await api.getWords();
+          const newStatsData = await api.getStats();
+          setWords(newWordsData);
+          setStats(newStatsData);
+        } catch (err) {
+          console.error('Failed to load demo data:', err);
+        }
+      }
     } catch (err) {
       console.error('Failed to load data:', err);
       setError('Failed to load data from server');
@@ -123,30 +141,43 @@ export default function Dashboard({ onNavigateToLanding }: DashboardProps) {
                 Export
               </Button>
               
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onNavigateToLanding}
+                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Выйти
+              </Button>
+              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-2">
                     <div className="w-8 h-8 bg-gradient-to-br from-[#FF6B35] to-[#FF8C42] rounded-full flex items-center justify-center">
                       <User className="w-4 h-4 text-white" />
                     </div>
-                    <span className="hidden sm:inline">Alex Morgan</span>
+                    <span className="hidden sm:inline">{user?.username || 'User'}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuLabel>Мой аккаунт</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
                     <User className="w-4 h-4 mr-2" />
-                    Profile
+                    Профиль
                   </DropdownMenuItem>
                   <DropdownMenuItem>
                     <Settings className="w-4 h-4 mr-2" />
-                    Settings
+                    Настройки
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={onNavigateToLanding}>
+                  <DropdownMenuItem 
+                    onClick={onNavigateToLanding}
+                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                  >
                     <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
+                    Выйти
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -159,10 +190,10 @@ export default function Dashboard({ onNavigateToLanding }: DashboardProps) {
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl text-gray-900 mb-2">
-            Welcome back, Alex! 👋
+            Добро пожаловать, {user?.username || 'Пользователь'}! 👋
           </h1>
           <p className="text-gray-600">
-            You've learned 12 new words this week. Keep up the great work!
+            На этой неделе вы выучили 12 новых слов. Так держать!
           </p>
         </div>
 
@@ -171,15 +202,15 @@ export default function Dashboard({ onNavigateToLanding }: DashboardProps) {
           <TabsList className="bg-white border border-gray-200">
             <TabsTrigger value="words" className="gap-2">
               <List className="w-4 h-4" />
-              My Words
+              Мои слова
             </TabsTrigger>
             <TabsTrigger value="lists" className="gap-2">
               <Folder className="w-4 h-4" />
-              Word Lists
+              Списки слов
             </TabsTrigger>
             <TabsTrigger value="stats" className="gap-2">
               <BarChart3 className="w-4 h-4" />
-              Stats
+              Статистика
             </TabsTrigger>
           </TabsList>
 
@@ -193,7 +224,7 @@ export default function Dashboard({ onNavigateToLanding }: DashboardProps) {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <Input
                       type="text"
-                      placeholder="Search words..."
+                      placeholder="Поиск слов..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10"
@@ -202,20 +233,20 @@ export default function Dashboard({ onNavigateToLanding }: DashboardProps) {
                   <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
                     <SelectTrigger className="w-full sm:w-48">
                       <Filter className="w-4 h-4 mr-2" />
-                      <SelectValue placeholder="All Languages" />
+                      <SelectValue placeholder="Все языки" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Languages</SelectItem>
-                      <SelectItem value="English">English</SelectItem>
-                      <SelectItem value="German">German</SelectItem>
-                      <SelectItem value="Japanese">Japanese</SelectItem>
-                      <SelectItem value="Portuguese">Portuguese</SelectItem>
-                      <SelectItem value="Swedish">Swedish</SelectItem>
+                      <SelectItem value="all">Все языки</SelectItem>
+                      <SelectItem value="English">Английский</SelectItem>
+                      <SelectItem value="German">Немецкий</SelectItem>
+                      <SelectItem value="Japanese">Японский</SelectItem>
+                      <SelectItem value="Portuguese">Португальский</SelectItem>
+                      <SelectItem value="Swedish">Шведский</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button className="bg-[#FF6B35] hover:bg-[#FF5722] text-white">
                     <Plus className="w-4 h-4 mr-2" />
-                    Add Word
+                    Добавить слово
                   </Button>
                 </div>
               </CardContent>

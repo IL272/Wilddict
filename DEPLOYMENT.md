@@ -1,112 +1,112 @@
-# Production Deployment Guide
+# WildDict - Deployment Guide
 
-## Backend Deployment (Railway)
+## 🚀 Deploy to Railway
 
-### 1. Deploy Backend on Railway
+### Prerequisites
+- GitHub account
+- Railway account (sign up at https://railway.app)
 
-1. Go to [Railway.app](https://railway.app)
-2. Sign in with GitHub
-3. Click "New Project" → "Deploy from GitHub repo"
-4. Select `IL272/Wilddict` repository
-5. Railway will auto-detect the configuration
-
-### 2. Configure Backend
-
-**Environment Variables (Railway Dashboard):**
-- No additional variables needed - SQLite will be created automatically
-- Railway will provide `PORT` variable automatically
-
-**Build Settings:**
-- Root Directory: `backend`
-- Dockerfile Path: `backend/Dockerfile`
-- Start Command: Auto-detected from Dockerfile
-
-### 3. Get Backend URL
-
-After deployment, Railway will provide a URL like:
-`https://wilddict-production-XXXX.up.railway.app`
-
----
-
-## Frontend Deployment (Vercel)
-
-### 1. Update Frontend API URL
-
-Before deploying, update `.env.example`:
-```env
-VITE_API_URL=https://your-railway-backend-url.railway.app
-```
-
-### 2. Deploy Frontend on Vercel
-
-1. Go to [Vercel.com](https://vercel.com)
-2. Sign in with GitHub
-3. Click "Import Project"
-4. Select `IL272/Wilddict` repository
-5. Configure:
-   - **Framework Preset**: Vite
-   - **Root Directory**: `./` (leave as root)
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
-   - **Environment Variables**:
-     - Key: `VITE_API_URL`
-     - Value: `https://your-railway-backend-url.railway.app`
-
-### 3. Deploy
-
-Click "Deploy" - Vercel will build and deploy automatically!
-
-Your site will be live at: `https://wilddict.vercel.app` (or custom domain)
-
----
-
-## Alternative: GitHub Pages (Frontend Only)
-
-Already configured! Just enable in repo settings:
-- Settings → Pages → Source: GitHub Actions
-- Site will be at: `https://il272.github.io/Wilddict/`
-
-Note: You'll need to update backend URL in code before building.
-
----
-
-## Post-Deployment
-
-### Update CORS in Backend
-
-After getting Vercel URL, update `backend/main.py`:
-```python
-allow_origins=[
-    "http://localhost:5173",
-    "https://wilddict.vercel.app",  # Your Vercel domain
-    "https://il272.github.io",
-]
-```
-
-Then commit and push - Railway will auto-redeploy!
-
----
-
-## Quick Commands
+### Step 1: Push to GitHub
 
 ```bash
-# Update environment for production
-echo "VITE_API_URL=https://your-backend-url" > .env.local
-
-# Build frontend locally to test
-npm run build
-npm run preview
-
-# Check backend health
-curl https://your-backend-url/api/stats
+git add .
+git commit -m "Add user isolation and deployment configuration"
+git push origin main
 ```
 
----
+### Step 2: Deploy Backend on Railway
 
-## Costs
+1. Go to https://railway.app
+2. Click "New Project"
+3. Select "Deploy from GitHub repo"
+4. Select your repository `IL272/Wilddict`
+5. Railway will auto-detect the Dockerfile in `backend/`
 
-- **Railway**: Free tier (500 hours/month)
-- **Vercel**: Free tier (unlimited for personal projects)
-- **GitHub Pages**: Free
+### Step 3: Add PostgreSQL Database
 
-Total: **$0/month** 🎉
+1. In your Railway project, click "+ New"
+2. Select "Database" → "PostgreSQL"
+3. Railway will automatically set `DATABASE_URL` environment variable
+
+### Step 4: Set Environment Variables
+
+In Railway project settings, add:
+- `SECRET_KEY`: Generate a secure random string
+- `CORS_ORIGINS`: Your frontend URL (e.g., `https://il272.github.io`)
+
+### Step 5: Deploy Frontend to GitHub Pages
+
+The frontend is already configured to deploy automatically via GitHub Actions.
+
+1. Go to your GitHub repository settings
+2. Navigate to Pages → Source → GitHub Actions
+3. Push any commit to `main` branch
+4. GitHub Actions will build and deploy automatically
+
+### Step 6: Update Frontend API URL
+
+After Railway backend is deployed, update the API URL:
+
+1. Get your Railway backend URL (e.g., `https://wilddict-production.up.railway.app`)
+2. In GitHub repository settings, go to "Secrets and variables" → "Actions"
+3. Add a new secret: `VITE_API_URL` with your Railway backend URL
+4. Re-run the GitHub Actions deployment
+
+## 🔧 Local Development
+
+### Backend
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
+
+### Frontend
+```bash
+npm install
+npm run dev
+```
+
+## 📝 Environment Variables
+
+### Backend (.env)
+```
+DATABASE_URL=postgresql://user:pass@host:5432/dbname  # Railway provides this
+SECRET_KEY=your-super-secret-key-here
+CORS_ORIGINS=https://il272.github.io,http://localhost:5173
+```
+
+### Frontend (.env)
+```
+VITE_API_URL=https://your-backend.up.railway.app
+```
+
+## 🎯 Deployment Checklist
+
+- ✅ Backend code pushed to GitHub
+- ✅ Railway project created
+- ✅ PostgreSQL database added
+- ✅ Environment variables set
+- ✅ Backend deployed and running
+- ✅ Frontend GitHub Actions workflow enabled
+- ✅ Frontend API URL updated
+- ✅ CORS configured correctly
+
+## 🐛 Troubleshooting
+
+### Backend not starting
+- Check Railway logs for errors
+- Verify DATABASE_URL is set correctly
+- Ensure all dependencies in requirements.txt
+
+### Frontend can't connect to backend
+- Verify CORS_ORIGINS includes your frontend domain
+- Check VITE_API_URL is correctly set
+- Ensure backend is running (check Railway status)
+
+### Database connection errors
+- Verify PostgreSQL service is running in Railway
+- Check DATABASE_URL format is correct
+- Ensure Railway backend and database are linked
