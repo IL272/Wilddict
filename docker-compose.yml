@@ -1,42 +1,60 @@
 version: '3.8'
 
 services:
-  postgres:
+  # PostgreSQL Database
+  db:
     image: postgres:15-alpine
-    container_name: wilddict-postgres
+    container_name: wilddict-db
+    restart: always
     environment:
-      POSTGRES_USER: wilddict
-      POSTGRES_PASSWORD: wilddict123
       POSTGRES_DB: wilddict
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: wilddict_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme123}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wilddict_user -d wilddict"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # FastAPI Backend
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: wilddict-backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://wilddict_user:${DB_PASSWORD:-changeme123}@db:5432/wilddict
+      SECRET_KEY: ${SECRET_KEY:-your-super-secret-key-change-in-production}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,https://il272.github.io}
     ports:
       - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://wilddict:wilddict123@postgres:5432/wilddict
     depends_on:
-      - postgres
-    restart: unless-stopped
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  wilddict:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: wilddict-app
+  # Nginx Frontend
+  frontend:
+    image: nginx:alpine
+    container_name: wilddict-frontend
+    restart: always
+    volumes:
+      - ./dist:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
     ports:
       - "80:80"
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:
+    driver: local
